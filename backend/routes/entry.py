@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from utils.openai_client import generate_tags
+from utils.openai_client import get_ai_tags
 from utils.storage import upload_file
 from datetime import datetime
 import uuid
@@ -26,7 +26,7 @@ def create_entry():
             media_urls.append(url)
 
     if not tags:
-        tags += generate_tags(content)
+        tags += get_ai_tags(content)
 
     entry = {
         "entry_id": str(uuid.uuid4()),
