@@ -53,6 +53,11 @@ const EntryModal: React.FC<EntryModalProps> = ({ entry, onClose, onEntrySaved })
     if (!trimmedContent && media.length === 0) {
       setError('Please write something or upload a file.');
       return;
+
+    onEntrySaved();
+    alert('✅ Memory saved!');
+    onClose();
+
     }
 
     if (!trimmedDate) {
