@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export default function Login() {
   const [phone, setPhone] = useState('');
@@ -17,11 +19,12 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await axios.post('/api/auth/request-login', { phone });
+      console.log('📡 Sending login request to:', `${API_BASE}/auth/request-login`);
+      await axios.post(`${API_BASE}/auth/request-login`, { phone });
       setStep('code');
     } catch (err) {
-      console.error(err);
-      setError('Failed to send code. Try again.');
+      console.error('❌ Error sending code:', err);
+      setError('Failed to send code. Please check the number and try again.');
     } finally {
       setLoading(false);
     }
@@ -31,13 +34,13 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const res = await axios.post('/api/auth/verify-token', { phone, token: code });
+      const res = await axios.post(`${API_BASE}/auth/verify-token`, { phone, token: code });
       const { user, token } = res.data;
       login(user, token);
       navigate('/');
     } catch (err) {
-      console.error(err);
-      setError('Invalid code. Try again.');
+      console.error('❌ Error verifying token:', err);
+      setError('Invalid code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -49,7 +52,7 @@ export default function Login() {
     if (!invitePhone || !token) return;
 
     try {
-      const res = await axios.post('/api/auth/verify-token', {
+      const res = await axios.post(`${API_BASE}/auth/verify-token`, {
         phone: invitePhone,
         token
       });
@@ -61,7 +64,7 @@ export default function Login() {
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (params.get('phone') && params.get('token')) {
       handleAutoLoginFromMagicLink();
     }
