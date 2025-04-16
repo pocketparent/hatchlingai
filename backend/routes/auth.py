@@ -18,19 +18,23 @@ def request_login():
     expires_at = datetime.utcnow() + timedelta(minutes=10)
     login_tokens[phone] = {"token": token, "expires_at": expires_at}
 
-    # Dev mode: log the token instead of sending SMS
-    if os.getenv("FLASK_ENV") == "development":
-        print(f"[DEV LOGIN] {phone} → {token}")
-    else:
-        try:
-            client = Client(os.getenv("TWILIO_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
-            client.messages.create(
-                body=f"Your Hatchling login code: {token}",
-                from_=os.getenv("TWILIO_PHONE_NUMBER"),
-                to=phone
-            )
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+    # ✅ DEV MODE: Don't send SMS, just log it
+    if os.getenv("TWILIO_DEV_MODE") == "true":
+        print(f"🧪 [DEV MODE] Login token for {phone}: {token}")
+        return jsonify({"status": "sent (dev mode)", "dev_token": token}), 200
+
+    # ✅ PRODUCTION MODE: Send real SMS via Twilio
+    try:
+        client = Client(os.getenv("TWILIO_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
+        message = client.messages.create(
+            body=f"Your Hatchling login code: {token}",
+            from_=os.getenv("TWILIO_PHONE_NUMBER"),
+            to=phone
+        )
+        print(f"📤 Twilio message sent (SID: {message.sid}) to {phone}")
+    except Exception as e:
+        print("❌ Twilio error:", e)
+        return jsonify({"error": "Failed to send SMS", "details": str(e)}), 500
 
     return jsonify({"status": "sent"}), 200
 
