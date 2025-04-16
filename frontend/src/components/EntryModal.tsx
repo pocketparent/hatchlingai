@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { JournalEntry } from '@/types';
-import { createEntry, updateEntry } from '@/utils/api';
+import { createEntry, updateEntry } from '@/utils/api/entries';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface EntryModalProps {
@@ -33,7 +33,11 @@ const EntryModal: React.FC<EntryModalProps> = ({ entry, onClose, onEntrySaved })
 
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setMedia(files);
+    const filtered = files.filter(file => file.size <= 15 * 1024 * 1024);
+    if (filtered.length < files.length) {
+      setError('Some files were too large and were ignored (limit: 15MB each)');
+    }
+    setMedia(filtered);
   };
 
   const handleRemoveMedia = (index: number) => {
@@ -62,27 +66,22 @@ const EntryModal: React.FC<EntryModalProps> = ({ entry, onClose, onEntrySaved })
       return;
     }
 
+    const entryPayload: Partial<JournalEntry> = {
+      content: trimmedContent,
+      tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+      date_of_memory: trimmedDate,
+      privacy,
+      author_id: user?.user_id || 'demo',
+      journal_id: 'default',
+      source_type: 'app',
+      media
+    };
+
     try {
-      const formData = new FormData();
-      formData.append('content', trimmedContent);
-      formData.append('date_of_memory', trimmedDate);
-      formData.append('privacy', privacy);
-      formData.append('source_type', 'app');
-      formData.append('author_id', user.user_id);
-      formData.append('journal_id', 'default');
-
-      tags
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean)
-        .forEach((tag) => formData.append('tags', tag));
-
-      media.forEach((file) => formData.append('media', file));
-
       if (entry?.entry_id) {
-        await updateEntry(entry.entry_id, formData);
+        await updateEntry(entry.entry_id, entryPayload);
       } else {
-        await createEntry(formData);
+        await createEntry(entryPayload);
       }
 
       onEntrySaved();
