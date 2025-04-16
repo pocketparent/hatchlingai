@@ -1,120 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from '@/contexts/AuthContext';
+import Journal from '@/pages/Journal';
+import Settings from '@/pages/Settings';
+import Admin from '@/pages/Admin';
+// import Login from '@/pages/Login'; // disabled for now
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
-
-export default function Login() {
-  const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
-  const [step, setStep] = useState<'start' | 'code'>('start');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { login } = useAuth();
-  const navigate = useNavigate();
-  const [params] = useSearchParams();
-
-  const handleSendLink = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      console.log('📡 Sending login request to:', `${API_BASE}/auth/request-login`);
-      await axios.post(`${API_BASE}/auth/request-login`, { phone });
-      setStep('code');
-    } catch (err) {
-      console.error('❌ Error sending code:', err);
-      setError('Failed to send code. Please check the number and try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerify = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      const res = await axios.post(`${API_BASE}/auth/verify-token`, { phone, token: code });
-      const { user, token } = res.data;
-      login(user, token);
-      navigate('/');
-    } catch (err) {
-      console.error('❌ Error verifying token:', err);
-      setError('Invalid code. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAutoLoginFromMagicLink = async () => {
-    const invitePhone = params.get('phone');
-    const token = params.get('token');
-    if (!invitePhone || !token) return;
-
-    try {
-      const res = await axios.post(`${API_BASE}/auth/verify-token`, {
-        phone: invitePhone,
-        token
-      });
-      const { user, token: jwt } = res.data;
-      login(user, jwt);
-      navigate('/');
-    } catch {
-      setError('Magic link failed. Try manual login.');
-    }
-  };
-
-  useEffect(() => {
-    if (params.get('phone') && params.get('token')) {
-      handleAutoLoginFromMagicLink();
-    }
-  }, []);
-
+const App = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F9F4EF] px-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-[#8C6F5E] border border-[#EADBC8]">
-        <h1 className="text-2xl font-bold mb-4 text-center">Welcome to Hatchling</h1>
-
-        {error && <p className="text-red-500 text-sm mb-3 text-center">{error}</p>}
-
-        {step === 'start' ? (
-          <>
-            <label className="block mb-2 text-sm">Enter your phone number</label>
-            <input
-              type="tel"
-              placeholder="e.g., +15555555555"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full border border-[#EADBC8] rounded-xl px-4 py-2 mb-4 text-sm bg-white"
-            />
-            <button
-              onClick={handleSendLink}
-              disabled={loading}
-              className="w-full bg-[#EADBC8] text-[#8C6F5E] py-2 rounded-xl hover:bg-[#F4E3DA]"
-            >
-              {loading ? 'Sending...' : 'Send Magic Link'}
-            </button>
-          </>
-        ) : (
-          <>
-            <label className="block mb-2 text-sm">Enter the 6-digit code</label>
-            <input
-              type="text"
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              className="w-full border border-[#EADBC8] rounded-xl px-4 py-2 mb-4 text-sm bg-white tracking-widest text-center"
-            />
-            <button
-              onClick={handleVerify}
-              disabled={loading}
-              className="w-full bg-[#EADBC8] text-[#8C6F5E] py-2 rounded-xl hover:bg-[#F4E3DA]"
-            >
-              {loading ? 'Verifying...' : 'Log In'}
-            </button>
-          </>
-        )}
-      </div>
-    </div>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Navigate to="/journal" />} />
+          <Route path="/journal" element={<Journal />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/admin" element={<Admin />} />
+          {/* <Route path="/login" element={<Login />} /> */}
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
-}
+};
+
+export default App;
