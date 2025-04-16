@@ -10,3 +10,6 @@ def generate_jwt(user: dict) -> str:
     }
     token = jwt.encode(payload, os.getenv("JWT_SECRET"), algorithm="HS256")
     return token
+
+def decode_jwt(token: str) -> dict:
+    return jwt.decode(token, os.getenv("JWT_SECRET"), algorithms=["HS256"])
