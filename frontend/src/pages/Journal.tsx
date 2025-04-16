@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { JournalEntry } from '@/types';
-import { fetchEntries } from '@/utils/api';
+import { fetchEntries } from '@/utils/api/entries';
 import EntryCard from '@/components/EntryCard';
 import EntryModal from '@/components/EntryModal';
 import EmptyState from '@/components/EmptyState';
