@@ -1,10 +1,12 @@
 from flask import Blueprint, request, jsonify
 from twilio.rest import Client
+from datetime import datetime, timedelta
 import os, random
 from utils.jwt_auth import generate_jwt
 
 auth_bp = Blueprint("auth", __name__)
-login_tokens = {}
+# Store login tokens with expiry
+login_tokens = {}  # { phone: { token: "123456", expires_at: datetime } }
 
 @auth_bp.route("/request-login", methods=["POST"])
 def request_login():
@@ -13,17 +15,22 @@ def request_login():
         return jsonify({"error": "Phone number required"}), 400
 
     token = str(random.randint(100000, 999999))
-    login_tokens[phone] = token
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
+    login_tokens[phone] = {"token": token, "expires_at": expires_at}
 
-    try:
-        client = Client(os.getenv("TWILIO_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
-        client.messages.create(
-            body=f"Your Hatchling login code: {token}",
-            from_=os.getenv("TWILIO_PHONE_NUMBER"),
-            to=phone
-        )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    # Dev mode: log the token instead of sending SMS
+    if os.getenv("FLASK_ENV") == "development":
+        print(f"[DEV LOGIN] {phone} → {token}")
+    else:
+        try:
+            client = Client(os.getenv("TWILIO_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
+            client.messages.create(
+                body=f"Your Hatchling login code: {token}",
+                from_=os.getenv("TWILIO_PHONE_NUMBER"),
+                to=phone
+            )
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     return jsonify({"status": "sent"}), 200
 
@@ -33,14 +40,22 @@ def verify_token():
     phone = data.get("phone")
     token = data.get("token")
 
-    if login_tokens.get(phone) != token:
+    if phone not in login_tokens:
+        return jsonify({"error": "No code requested"}), 400
+
+    record = login_tokens[phone]
+    if datetime.utcnow() > record["expires_at"]:
+        del login_tokens[phone]
+        return jsonify({"error": "Code expired"}), 403
+
+    if record["token"] != token:
         return jsonify({"error": "Invalid token"}), 403
 
     del login_tokens[phone]
 
-    # Simulate user lookup/creation
+    # Simulated user (in production, fetch or create from DB)
     user = {
-        "user_id": f"user_{random.randint(1000,9999)}",
+        "user_id": phone,
         "phone_number": phone,
         "role": "parent"
     }
