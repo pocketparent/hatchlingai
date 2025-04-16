@@ -53,11 +53,14 @@ def verify_token():
 
     del login_tokens[phone]
 
-    # Simulated user (in production, fetch or create from DB)
+    # ✅ Admin role check
+    admin_numbers = os.getenv("ADMIN_NUMBERS", "").split(",")
+    role = "admin" if phone in admin_numbers else "parent"
+
     user = {
         "user_id": phone,
         "phone_number": phone,
-        "role": "parent"
+        "role": role
     }
 
     jwt_token = generate_jwt(user)
